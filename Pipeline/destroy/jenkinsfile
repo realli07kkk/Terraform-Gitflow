@@ -1,0 +1,30 @@
+pipeline {
+  agent any
+  stages {
+    stage('检出') {
+      steps {
+        checkout([
+          $class: 'GitSCM',
+          branches: [[name: GIT_BUILD_REF]],
+          userRemoteConfigs: [[
+            url: GIT_REPO_URL,
+            credentialsId: CREDENTIALS_ID
+          ]]])
+        }
+      }
+      stage('destroy-plan') {
+        steps {
+          sh ' cp /lym/tf/provider.tf $Destroy_Dir && cd $Destroy_Dir && sed -i "10i key = \\"${Destroy_Dir}/tfstate.json\\"" provider.tf && terraform init -reconfigure && terraform plan -destroy '
+        }
+      }
+      stage('destroy') {
+        input {
+          message '是否继续执行构建'
+          submitter 'YuAeFizlKI'
+        }
+        steps {
+          sh 'cd $Destroy_Dir && terraform destroy -auto-approve'
+        }
+      }
+    }
+  }
