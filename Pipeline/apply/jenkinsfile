@@ -1,0 +1,29 @@
+pipeline {
+  agent any
+  stages {
+    stage('检出') {
+      steps {
+        checkout([
+          $class: 'GitSCM',
+          branches: [[name: GIT_BUILD_REF]],
+          userRemoteConfigs: [[
+            url: GIT_REPO_URL,
+            credentialsId: CREDENTIALS_ID
+          ]]])
+        }
+      }
+      stage('plan') {
+        steps {
+          sh ' cp /lym/tf/provider.tf $MR_SOURCE_BRANCH && cd $MR_SOURCE_BRANCH && sed -i "10i key = \\"${MR_SOURCE_BRANCH}/tfstate.json\\"" provider.tf && ls && terraform init -reconfigure && terraform plan '
+        }
+      }
+      stage('apply') {
+        input {
+          message '是否继续执行构建'
+        }
+        steps {
+          sh 'cd $MR_SOURCE_BRANCH && terraform apply -auto-approve'
+        }
+      }
+    }
+  }
